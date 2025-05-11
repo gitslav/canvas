@@ -46,7 +46,7 @@ type svgCanvas struct {
 	width, height, diagonal float64
 }
 
-type svgParser struct {
+type SvgParser struct {
 	z   *parse.Input
 	err error
 	svgCanvas
@@ -63,7 +63,7 @@ type svgParser struct {
 	activeDefs map[string]svgDef
 }
 
-func (svg *svgParser) parseViewBox(attrWidth, attrHeight, attrViewBox string) (float64, float64, [4]float64) {
+func (svg *SvgParser) parseViewBox(attrWidth, attrHeight, attrViewBox string) (float64, float64, [4]float64) {
 	var err error
 	var viewbox [4]float64
 	var width, height float64
@@ -93,7 +93,7 @@ func (svg *svgParser) parseViewBox(attrWidth, attrHeight, attrViewBox string) (f
 	return width, height, viewbox
 }
 
-func (svg *svgParser) init(width, height float64, viewbox [4]float64) {
+func (svg *SvgParser) init(width, height float64, viewbox [4]float64) {
 	svg.width, svg.height = width*96.0/25.4, height*96.0/25.4
 	svg.diagonal = math.Sqrt((svg.width*svg.width + svg.height*svg.height) / 2.0)
 
@@ -108,13 +108,13 @@ func (svg *svgParser) init(width, height float64, viewbox [4]float64) {
 	svg.state = svgDefaultState
 }
 
-func (svg *svgParser) push(tag string, attrs map[string]string) {
+func (svg *SvgParser) push(tag string, attrs map[string]string) {
 	svg.ctx.Push()
 	svg.stateStack = append(svg.stateStack, svg.state)
 	svg.elemStack = append(svg.elemStack, svgElem{tag, attrs["id"], attrs})
 }
 
-func (svg *svgParser) pop() {
+func (svg *SvgParser) pop() {
 	if len(svg.stateStack) == 0 {
 		svg.err = parse.NewErrorLexer(svg.z, "invalid SVG")
 		return
@@ -125,7 +125,7 @@ func (svg *svgParser) pop() {
 	svg.ctx.Pop()
 }
 
-func (svg *svgParser) parseNumber(v string) float64 {
+func (svg *SvgParser) parseNumber(v string) float64 {
 	if len(v) == 0 {
 		return 0.0
 	}
@@ -146,7 +146,7 @@ func (svg *svgParser) parseNumber(v string) float64 {
 	return num
 }
 
-func (svg *svgParser) parseDimension(v string, parent float64) float64 {
+func (svg *SvgParser) parseDimension(v string, parent float64) float64 {
 	if len(v) == 0 {
 		return 0.0
 	}
@@ -198,7 +198,7 @@ func (svg *svgParser) parseDimension(v string, parent float64) float64 {
 	return 0.0
 }
 
-func (svg *svgParser) parseColorComponent(v string) uint8 {
+func (svg *SvgParser) parseColorComponent(v string) uint8 {
 	v = strings.TrimSpace(v)
 	if len(v) == 0 {
 		return 0
@@ -216,14 +216,14 @@ func (svg *svgParser) parseColorComponent(v string) uint8 {
 	return uint8(num)
 }
 
-func (svg *svgParser) parsePaint(v string) Paint {
+func (svg *SvgParser) parsePaint(v string) Paint {
 	if v == "none" {
 		return Paint{Color: Transparent}
 	}
 	return Paint{Color: svg.parseColor(v)}
 }
 
-func (svg *svgParser) parseColor(v string) color.RGBA {
+func (svg *SvgParser) parseColor(v string) color.RGBA {
 	if len(v) == 0 {
 		return Black
 	} else if v[0] == '#' {
@@ -264,7 +264,7 @@ func (svg *svgParser) parseColor(v string) color.RGBA {
 	return col
 }
 
-func (svg *svgParser) parsePoints(v string) []float64 {
+func (svg *SvgParser) parsePoints(v string) []float64 {
 	v = strings.ReplaceAll(v, "\n", ",")
 	v = strings.ReplaceAll(v, "\t", ",")
 	v = strings.ReplaceAll(v, " ", ",")
@@ -282,7 +282,7 @@ func (svg *svgParser) parsePoints(v string) []float64 {
 	return vals
 }
 
-func (svg *svgParser) parseTransform(v string) Matrix {
+func (svg *SvgParser) ParseTransform(v string) Matrix {
 	i, j := 0, 0
 	m := Identity
 	var fun string
@@ -343,7 +343,7 @@ func (svg *svgParser) parseTransform(v string) Matrix {
 	return m
 }
 
-func (svg *svgParser) parseAttributes(l *xml.Lexer) (xml.TokenType, []string, map[string]string) {
+func (svg *SvgParser) parseAttributes(l *xml.Lexer) (xml.TokenType, []string, map[string]string) {
 	// get all attributes
 	var tt xml.TokenType
 	attrs := map[string]string{}
@@ -373,7 +373,7 @@ type svgTag struct {
 	content   []*svgTag
 }
 
-func (svg *svgParser) parseTag(l *xml.Lexer) *svgTag {
+func (svg *SvgParser) parseTag(l *xml.Lexer) *svgTag {
 	var root, parent *svgTag
 	for {
 		tt, data := l.Next()
@@ -435,7 +435,7 @@ func (svg *svgParser) parseTag(l *xml.Lexer) *svgTag {
 	return root
 }
 
-func (svg *svgParser) parseDefs(l *xml.Lexer) {
+func (svg *SvgParser) parseDefs(l *xml.Lexer) {
 	for {
 		tag := svg.parseTag(l)
 		if tag == nil {
@@ -605,7 +605,7 @@ func (svg *svgParser) parseDefs(l *xml.Lexer) {
 	}
 }
 
-func (svg *svgParser) parseStyle(b []byte) {
+func (svg *SvgParser) parseStyle(b []byte) {
 	p := css.NewParser(parse.NewInputBytes(b), false)
 	selectors := []cssSelector{}
 	for {
@@ -670,7 +670,7 @@ func (svg *svgParser) parseStyle(b []byte) {
 	}
 }
 
-func (svg *svgParser) parseStyleAttribute(style string) []cssProperty {
+func (svg *SvgParser) parseStyleAttribute(style string) []cssProperty {
 	props := []cssProperty{}
 	p := css.NewParser(parse.NewInput(bytes.NewBufferString(style)), true)
 	for {
@@ -688,7 +688,7 @@ func (svg *svgParser) parseStyleAttribute(style string) []cssProperty {
 	return props
 }
 
-func (svg *svgParser) setStyling(props []cssProperty) {
+func (svg *SvgParser) setStyling(props []cssProperty) {
 	// apply CSS from <style>
 	for _, rule := range svg.cssRules {
 		// TODO: this is in order of appearance, use selector specificity/precedence?
@@ -711,7 +711,7 @@ func (svg *svgParser) setStyling(props []cssProperty) {
 	}
 }
 
-func (svg *svgParser) parseUrlID(val string) string {
+func (svg *SvgParser) parseUrlID(val string) string {
 	if strings.HasPrefix(val, "url(") && strings.HasSuffix(val, ")") {
 		if 6 < len(val) && (val[4] == '#' || val[5] == '#') {
 			if val[4] == '#' {
@@ -724,7 +724,7 @@ func (svg *svgParser) parseUrlID(val string) string {
 	return ""
 }
 
-func (svg *svgParser) setAttribute(key, val string) {
+func (svg *SvgParser) setAttribute(key, val string) {
 	switch key {
 	case "fill":
 		if id := svg.parseUrlID(val); id != "" {
@@ -774,7 +774,7 @@ func (svg *svgParser) setAttribute(key, val string) {
 			miter.Limit = svg.state.strokeMiterLimit
 		}
 	case "transform":
-		m := svg.parseTransform(val)
+		m := svg.ParseTransform(val)
 		svg.ctx.ComposeView(m)
 	case "text-anchor":
 		svg.state.textAnchor = val
@@ -797,7 +797,7 @@ func (svg *svgParser) setAttribute(key, val string) {
 	}
 }
 
-func (svg *svgParser) getFontFace() *FontFace {
+func (svg *SvgParser) getFontFace() *FontFace {
 	fontFamily, ok := svg.fonts[svg.state.fontFamily]
 	if !ok {
 		fontFamily = NewFontFamily(svg.state.fontFamily)
@@ -810,7 +810,7 @@ func (svg *svgParser) getFontFace() *FontFace {
 	return fontFamily.Face(fontSize, svg.ctx.Style.Fill.Color)
 }
 
-func (svg *svgParser) drawShape(tag string, attrs map[string]string) {
+func (svg *SvgParser) drawShape(tag string, attrs map[string]string) {
 	switch tag {
 	case "circle":
 		cx := svg.parseDimension(attrs["cx"], svg.width)
@@ -881,7 +881,7 @@ func ParseSVG(r io.Reader) (*Canvas, error) {
 	defer z.Restore()
 
 	l := xml.NewLexer(z)
-	svg := svgParser{
+	svg := SvgParser{
 		z:          z,
 		defs:       map[string]svgDef{},
 		fonts:      map[string]*FontFamily{},
